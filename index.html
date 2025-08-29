@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Attendance Management System</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .clay-container {
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 20px;
+            box-shadow: 
+                8px 8px 16px rgba(0, 0, 0, 0.1),
+                -8px -8px 16px rgba(255, 255, 255, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .clay-button {
+            background: #e0e5ec;
+            border-radius: 12px;
+            box-shadow: 
+                5px 5px 10px rgba(0, 0, 0, 0.1),
+                -5px -5px 10px rgba(255, 255, 255, 0.7);
+            transition: all 0.2s ease;
+        }
+        .clay-button:active {
+            box-shadow: 
+                inset 5px 5px 10px rgba(0, 0, 0, 0.1),
+                inset -5px -5px 10px rgba(255, 255, 255, 0.7);
+        }
+    </style>
+</head>
+<body class="bg-[#e0e5ec] min-h-screen p-4">
+    <div id="app">
+        <div class="max-w-md mx-auto clay-container p-6">
+            <h1 class="text-2xl font-bold text-center mb-6 text-gray-800">Attendance Management</h1>
+            
+            <div class="space-y-4">
+                <div class="clay-container p-4">
+                    <p class="text-gray-600 mb-2">Current Status:</p>
+                    <p class="text-lg font-semibold" :class="{'text-green-600': checkedIn, 'text-red-600': !checkedIn}">
+                        {{ checkedIn ? 'Checked In' : 'Checked Out' }}
+                    </p>
+                </div>
+
+                <div class="clay-container p-4">
+                    <p class="text-gray-600 mb-2">Location:</p>
+                    <p class="text-sm" v-if="location">
+                        Lat: {{location.latitude}}<br>
+                        Lng: {{location.longitude}}
+                    </p>
+                    <p class="text-sm text-red-600" v-else>Fetching location...</p>
+                </div>
+
+                <div class="clay-container p-4">
+                    <p class="text-gray-600 mb-2">Time:</p>
+                    <p class="text-lg">{{currentTime}}</p>
+                </div>
+
+                <button @click="handleAttendance" 
+                        class="clay-button w-full py-3 px-6 text-lg font-semibold"
+                        :class="{'bg-green-100': !checkedIn, 'bg-red-100': checkedIn}">
+                    {{ checkedIn ? 'Check Out' : 'Check In' }}
+                </button>
+
+                <div class="clay-container p-4 mt-6">
+                    <h2 class="text-lg font-semibold mb-3">Today's Records</h2>
+                    <div v-if="records.length" class="space-y-2">
+                        <div v-for="record in records" :key="record.time" class="text-sm">
+                            <p>{{record.type}}: {{record.time}}</p>
+                            <p class="text-xs text-gray-600">Lat: {{record.lat}}, Lng: {{record.lng}}</p>
+                        </div>
+                    </div>
+                    <p v-else class="text-gray-600">No records for today</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const { createApp } = Vue
+
+        createApp({
+            data() {
+                return {
+                    checkedIn: false,
+                    location: null,
+                    currentTime: '',
+                    records: [],
+                    timer: null
+                }
+            },
+            methods: {
+                async getLocation() {
+                    if (navigator.geolocation) {
+                        try {
+                            const position = await new Promise((resolve, reject) => {
+                                navigator.geolocation.getCurrentPosition(resolve, reject)
+                            })
+                            this.location = {
+                                latitude: position.coords.latitude.toFixed(6),
+                                longitude: position.coords.longitude.toFixed(6)
+                            }
+                        } catch (error) {
+                            Swal.fire('Error', 'Unable to get location. Please enable location services.', 'error')
+                        }
+                    } else {
+                        Swal.fire('Error', 'Geolocation is not supported by this browser.', 'error')
+                    }
+                },
+                updateTime() {
+                    this.currentTime = new Date().toLocaleTimeString()
+                },
+                async handleAttendance() {
+                    if (!this.location) {
+                        await this.getLocation()
+                        if (!this.location) return
+                    }
+
+                    const record = {
+                        type: this.checkedIn ? 'Check Out' : 'Check In',
+                        time: new Date().toLocaleTimeString(),
+                        lat: this.location.latitude,
+                        lng: this.location.longitude
+                    }
+
+                    this.records.push(record)
+                    this.checkedIn = !this.checkedIn
+
+                    Swal.fire({
+                        icon: 'success',
+                        title: `Successfully ${record.type}`,
+                        showConfirmButton: false,
+                        timer: 1500
+                    })
+                }
+            },
+            mounted() {
+                this.getLocation()
+                this.updateTime()
+                this.timer = setInterval(this.updateTime, 1000)
+            },
+            beforeUnmount() {
+                if (this.timer) {
+                    clearInterval(this.timer)
+                }
+            }
+        }).mount('#app')
+    </script>
+<script>document.body.addEventListener('wheel', e => { if (!e.ctrlKey) return; e.preventDefault(); return }, { passive: false })</script>
+	</body>
+</html>
